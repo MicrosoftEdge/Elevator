@@ -27,12 +27,8 @@
 
 using System;
 using System.IO;
-using System.IO.Pipes;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ElevatorServer
 {
@@ -42,7 +38,6 @@ namespace ElevatorServer
         private static void Main(string[] args)
         {
             string traceProfile = "";
-            CancellationTokenSource tokenSource = null;
 
             if (args.Length > 0)
             {
@@ -62,23 +57,31 @@ namespace ElevatorServer
                 Environment.Exit(1);
             }
 
-            tokenSource = new CancellationTokenSource();
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
 
-            // run the control server in an asynchronous task            
-            Task task = new Task(() => RunTracingControlServer(traceProfile, tokenSource.Token), tokenSource.Token);
-            task.Start();
-
-            Console.WriteLine("Press ESC to stop and exit the Tracing Controller.");
-
-            // Wait until the user presses the ESC key.
-            while (Console.ReadKey().Key != ConsoleKey.Escape)
+            Task task;
+            using (var server = new ElevatorServer())
             {
+                // run the control server in an asynchronous task            
+#pragma warning disable CS4014 // We are using Task as a thread so await is not needed.
+                task = new Task(() => RunTracingControlServer(server, traceProfile, tokenSource.Token), tokenSource.Token);
+#pragma warning restore CS4014
+                task.Start();
+
+                Console.WriteLine("Press ESC to stop and exit the Tracing Controller.");
+
+                // Wait until the user presses the ESC key.
+                while (Console.ReadKey().Key != ConsoleKey.Escape)
+                {
+                }
+
+                server.Shutdown();
+                tokenSource.Cancel();
             }
 
             // cancel the server task and clean up before exiting
             try
             {
-                tokenSource.Cancel();
                 task.Wait();
             }
             catch (OperationCanceledException)
@@ -93,107 +96,76 @@ namespace ElevatorServer
 
         // This method runs the main loop of the tracing controller. 
         // It is run as an asynchronous task and takes a CancellationToken as a parameter.
-        private static async Task RunTracingControlServer(string traceProfile, CancellationToken cancelToken)
+        private static async Task RunTracingControlServer(ElevatorServer server, string traceProfile, CancellationToken cancelToken)
         {
             AutomateWPR wpr = new AutomateWPR(traceProfile);
 
             string etlFileName = "";
-            string line = "";
 
-            // Need to specifically set the security to allow "Everyone" since this app runs as an admin
-            // while the client runs as the default user
-            PipeSecurity pSecure = new PipeSecurity();
-            pSecure.SetAccessRule(new PipeAccessRule("Everyone", PipeAccessRights.ReadWrite, System.Security.AccessControl.AccessControlType.Allow));
+            Console.WriteLine("{0}: Tracing Controller Server starting....", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
             while (!cancelToken.IsCancellationRequested)
             {
-                Console.WriteLine("{0}: Tracing Controller Server starting....", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                Console.WriteLine("{0}: Waiting for client connection.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
-                using (var pipeServer = new NamedPipeServerStream("TracingControllerPipe", PipeDirection.InOut, 10, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 255, 255, pSecure))
+                try
                 {
-                    Console.WriteLine("{0}: Waiting for client connection.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    await server.ConnectAsync(cancelToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    continue;
+                }
 
-                    try
+                // Begin interacting with the client
+                while (!cancelToken.IsCancellationRequested)
+                {
+                    // A command line from the client is delimited by spaces
+                    var messageTokens = server.GetCommand();
+
+                    // the first token of the command line is the actual command
+                    string command = messageTokens[0];
+
+                    switch (command)
                     {
-                        await pipeServer.WaitForConnectionAsync(cancelToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        continue;
-                    }
+                        case "PASS_START":
+                            Console.WriteLine("{0}: Client is starting the test pass.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
-                    var inputPipeStream = new StreamReader(pipeServer);
-                    var outputPipeStream = new StreamWriter(pipeServer);
+                            break;
+                        case "START_BROWSER":
+                            Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5]);
+                            Console.WriteLine("{0}: Starting tracing session.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
-                    // Begin interacting with the client
-                    while (pipeServer.IsConnected && !cancelToken.IsCancellationRequested)
-                    {
-                        // get a command from the client
-                        line = inputPipeStream.ReadLine();
+                            // first cancel any currently running trace sessions
+                            wpr.CancelWPR();
 
-                        // sometimes we receive a null or empty line from the client and need to skip
-                        if (string.IsNullOrEmpty(line))
-                        {
-                            continue;
-                        }
+                            // start tracing
+                            wpr.StartWPR();
 
-                        // A command line from the client is delimited by spaces
-                        var messageTokens = line.Split(' ');
+                            // create the ETL file name which we will use later
+                            etlFileName = messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl";
 
-                        // the first token of the command line is the actual command
-                        string command = messageTokens[0];
+                            break;
+                        case "END_BROWSER":
+                            Console.WriteLine("{0}: -Finished- Browser: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[1]);
+                            Console.WriteLine("{0}: Stopping tracing session and saving as ETL: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), etlFileName);
 
-                        switch (command)
-                        {
-                            case "PASS_START":
-                                Console.WriteLine("{0}: Client is starting the test pass.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                            // end tracing
+                            wpr.StopWPR(etlFileName);
 
-                                // acknowledge
-                                outputPipeStream.WriteLine("OK");
-                                outputPipeStream.Flush();
-                                break;
-                            case "START_BROWSER":
-                                Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5]);
-                                Console.WriteLine("{0}: Starting tracing session.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                            Console.WriteLine("{0}: Done saving ETL file: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), etlFileName);
 
-                                // first cancel any currently running trace sessions
-                                wpr.CancelWPR();
+                            break;
+                        case "PASS_END":
+                            Console.WriteLine("{0}: Client test pass has ended.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
-                                // start tracing
-                                wpr.StartWPR();
+                            break;
+                        default:
+                            throw new Exception($"Unknown command encountered: {command}");
+                    } // switch (Command)
 
-                                // create the ETL file name which we will use later
-                                etlFileName = messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl";
-
-                                // acknowledge
-                                outputPipeStream.WriteLine("OK");
-                                outputPipeStream.Flush();
-                                break;
-                            case "END_BROWSER":
-                                Console.WriteLine("{0}: -Finished- Browser: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[1]);
-                                Console.WriteLine("{0}: Stopping tracing session and saving as ETL: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), etlFileName);
-
-                                // end tracing
-                                wpr.StopWPR(etlFileName);
-
-                                Console.WriteLine("{0}: Done saving ETL file: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), etlFileName);
-
-                                // acknowledge
-                                outputPipeStream.WriteLine("OK");
-                                outputPipeStream.Flush();
-                                break;
-                                case "PASS_END":
-                                Console.WriteLine("{0}: Client test pass has ended.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-
-                                // acknowledge
-                                outputPipeStream.WriteLine("OK");
-                                outputPipeStream.Flush();
-                                break;
-                            default:
-                                throw new Exception($"Unknown command encountered: {command}");
-                        } // switch (Command)
-                    } // while (pipeServer.IsConnected && !cancelToken.IsCancellationRequested)
-                } // using (var pipeServer
+                    server.AcknowledgeCommand();
+                } // while (pipeServer.IsConnected && !cancelToken.IsCancellationRequested)
             } // while (!cancelToken.IsCancellationRequested)
         }
     }
