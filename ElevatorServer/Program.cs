@@ -1,6 +1,6 @@
 ﻿//--------------------------------------------------------------
 //
-// Microsoft Edge Elevator Server
+// Microsoft Edge Elevator
 // Copyright(c) Microsoft Corporation
 // All rights reserved.
 //
@@ -30,7 +30,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ElevatorServer
+namespace Elevator
 {
     internal class Program
     {
@@ -121,18 +121,18 @@ namespace ElevatorServer
                 while (!cancelToken.IsCancellationRequested)
                 {
                     // A command line from the client is delimited by spaces
-                    var messageTokens = server.GetCommand();
+                    var messageTokens = await server.GetCommandAsync();
 
                     // the first token of the command line is the actual command
                     string command = messageTokens[0];
 
                     switch (command)
                     {
-                        case "PASS_START":
+                        case Commands.START_PASS:
                             Console.WriteLine("{0}: Client is starting the test pass.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                             break;
-                        case "START_BROWSER":
+                        case Commands.START_BROWSER:
                             Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5]);
                             Console.WriteLine("{0}: Starting tracing session.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
@@ -146,7 +146,7 @@ namespace ElevatorServer
                             etlFileName = messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl";
 
                             break;
-                        case "END_BROWSER":
+                        case Commands.END_BROWSER:
                             Console.WriteLine("{0}: -Finished- Browser: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[1]);
                             Console.WriteLine("{0}: Stopping tracing session and saving as ETL: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), etlFileName);
 
@@ -156,7 +156,7 @@ namespace ElevatorServer
                             Console.WriteLine("{0}: Done saving ETL file: {1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), etlFileName);
 
                             break;
-                        case "PASS_END":
+                        case Commands.END_PASS:
                             Console.WriteLine("{0}: Client test pass has ended.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                             break;
@@ -164,7 +164,7 @@ namespace ElevatorServer
                             throw new Exception($"Unknown command encountered: {command}");
                     } // switch (Command)
 
-                    server.AcknowledgeCommand();
+                    await server.AcknowledgeCommandAsync();
                 } // while (pipeServer.IsConnected && !cancelToken.IsCancellationRequested)
             } // while (!cancelToken.IsCancellationRequested)
         }
