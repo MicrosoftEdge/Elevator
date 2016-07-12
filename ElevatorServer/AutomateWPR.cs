@@ -1,6 +1,6 @@
 ﻿//--------------------------------------------------------------
 //
-// Microsoft Edge Elevator Server
+// Microsoft Edge Elevator
 // Copyright(c) Microsoft Corporation
 // All rights reserved.
 //
@@ -28,7 +28,7 @@
 using System;
 using System.Diagnostics;
 
-namespace ElevatorServer
+namespace Elevator
 {
     /// <summary>
     /// Provides Windows tracing controls using Windows Performance Recorder (WPR).

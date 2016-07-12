@@ -1,6 +1,6 @@
 ﻿//--------------------------------------------------------------
 //
-// Microsoft Edge Elevator Server
+// Microsoft Edge Elevator
 // Copyright(c) Microsoft Corporation
 // All rights reserved.
 //
@@ -31,9 +31,9 @@ using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ElevatorServer
+namespace Elevator
 {
-    internal class ElevatorServer : IDisposable
+    public class ElevatorServer : IDisposable
     {
         private StreamReader _inputPipeStream;
         private StreamWriter _outputPipeStream;
@@ -45,26 +45,18 @@ namespace ElevatorServer
             // while the client runs as the default user
             PipeSecurity pSecure = new PipeSecurity();
             pSecure.SetAccessRule(new PipeAccessRule("Everyone", PipeAccessRights.ReadWrite, System.Security.AccessControl.AccessControlType.Allow));
+
             _pipeServer = new NamedPipeServerStream("TracingControllerPipe", PipeDirection.InOut, 10, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 255, 255, pSecure);
             _inputPipeStream = new StreamReader(_pipeServer);
             _outputPipeStream = new StreamWriter(_pipeServer);
         }
-
-        public async Task ConnectAsync(CancellationToken cancelToken)
+        
+        public Task ConnectAsync(CancellationToken cancelToken)
         {
-            while (!cancelToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await _pipeServer.WaitForConnectionAsync(cancelToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    continue;
-                }
-            }
+            return _pipeServer.WaitForConnectionAsync(cancelToken);
         }
-        public string[] GetCommand()
+
+        public async Task<string[]> GetCommandAsync()
         {
             // get a command from the client
             string line = null;
@@ -72,7 +64,7 @@ namespace ElevatorServer
             // sometimes we receive a null or empty line from the client and need to skip
             while (string.IsNullOrEmpty(line))
             {
-                line = _inputPipeStream.ReadLine();
+                line = await _inputPipeStream.ReadLineAsync();
             }
 
             // A command line from the client is delimited by spaces
@@ -83,10 +75,10 @@ namespace ElevatorServer
 
             switch (command)
             {
-                case "PASS_START":
-                case "START_BROWSER":
-                case "END_BROWSER":
-                case "PASS_END":
+                case Commands.START_PASS:
+                case Commands.START_BROWSER:
+                case Commands.END_BROWSER:
+                case Commands.END_PASS:
                     break;
                 default:
                     throw new Exception($"Unknown command encountered: {command}");
@@ -95,11 +87,11 @@ namespace ElevatorServer
             return messageTokens;
         }
 
-        public void AcknowledgeCommand()
+        public async Task AcknowledgeCommandAsync()
         {
             // acknowledge
-            _outputPipeStream.WriteLine("OK");
-            _outputPipeStream.Flush();
+            await _outputPipeStream.WriteLineAsync("OK");
+            await _outputPipeStream.FlushAsync();
         }
 
         public void Dispose()
