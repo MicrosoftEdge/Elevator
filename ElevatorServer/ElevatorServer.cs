@@ -50,7 +50,12 @@ namespace Elevator
             _inputPipeStream = new StreamReader(_pipeServer);
             _outputPipeStream = new StreamWriter(_pipeServer);
         }
-        
+
+        public void Disconnect()
+        {
+            _pipeServer.Disconnect();
+        }
+
         public Task ConnectAsync(CancellationToken cancelToken)
         {
             return _pipeServer.WaitForConnectionAsync(cancelToken);
