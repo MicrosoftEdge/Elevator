@@ -106,6 +106,8 @@ namespace Elevator
 
             while (!cancelToken.IsCancellationRequested)
             {
+                bool isPassEnded = false;
+
                 Console.WriteLine("{0}: Waiting for client connection.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                 try
@@ -118,7 +120,7 @@ namespace Elevator
                 }
 
                 // Begin interacting with the client
-                while (!cancelToken.IsCancellationRequested)
+                while (!cancelToken.IsCancellationRequested && !isPassEnded)
                 {
                     // A command line from the client is delimited by spaces
                     var messageTokens = await server.GetCommandAsync();
@@ -158,6 +160,7 @@ namespace Elevator
                             break;
                         case Commands.END_PASS:
                             Console.WriteLine("{0}: Client test pass has ended.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                            isPassEnded = true;
 
                             break;
                         default:
@@ -165,7 +168,10 @@ namespace Elevator
                     } // switch (Command)
 
                     await server.AcknowledgeCommandAsync();
-                } // while (pipeServer.IsConnected && !cancelToken.IsCancellationRequested)
+                } // while (!cancelToken.IsCancellationRequested && !isPassEnded)
+
+                server.Disconnect();
+
             } // while (!cancelToken.IsCancellationRequested)
         }
     }
