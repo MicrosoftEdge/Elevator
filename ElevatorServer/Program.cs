@@ -99,8 +99,8 @@ namespace Elevator
         private static async Task RunTracingControlServer(ElevatorServer server, string traceProfile, CancellationToken cancelToken)
         {
             AutomateWPR wpr = new AutomateWPR(traceProfile);
-
             string etlFileName = "";
+            string etlFolderPath = "";
 
             Console.WriteLine("{0}: Tracing Controller Server starting....", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
@@ -133,6 +133,23 @@ namespace Elevator
                         case Commands.START_PASS:
                             Console.WriteLine("{0}: Client is starting the test pass.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
+                            // If there is more than one message token then the client has passed a folder path for where to save the ETL files.
+                            if (messageTokens.Length > 1)
+                            {
+                                if (Directory.Exists(messageTokens[1]))
+                                {
+                                    etlFolderPath = messageTokens[1];
+                                }
+                                else
+                                {
+                                    throw new DirectoryNotFoundException("Passed in directory was not found! Directory: " + messageTokens[1]);
+                                }
+                            }
+                            else
+                            {
+                                etlFolderPath = Directory.GetCurrentDirectory();
+                            }
+
                             break;
                         case Commands.START_BROWSER:
                             Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5]);
@@ -145,7 +162,8 @@ namespace Elevator
                             wpr.StartWPR();
 
                             // create the ETL file name which we will use later
-                            etlFileName = messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl";
+                            //etlFileName = messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl";
+                            etlFileName = Path.Combine(etlFolderPath, messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl");
 
                             break;
                         case Commands.END_BROWSER:
