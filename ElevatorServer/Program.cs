@@ -181,6 +181,10 @@ namespace Elevator
                             isPassEnded = true;
 
                             break;
+                        case Commands.CANCEL_PASS:
+                            Console.WriteLine("{0}: Cancelling tracing.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                            wpr.CancelWPR();
+                            break;
                         default:
                             throw new Exception($"Unknown command encountered: {command}");
                     } // switch (Command)

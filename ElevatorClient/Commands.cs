@@ -33,5 +33,6 @@ namespace Elevator
         public const string START_BROWSER = "START_BROWSER";
         public const string END_BROWSER = "END_BROWSER";
         public const string END_PASS = "END_PASS";
+        public const string CANCEL_PASS = "CANCEL_PASS";
     }
 }

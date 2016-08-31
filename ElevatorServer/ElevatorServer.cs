@@ -84,6 +84,7 @@ namespace Elevator
                 case Commands.START_BROWSER:
                 case Commands.END_BROWSER:
                 case Commands.END_PASS:
+                case Commands.CANCEL_PASS:
                     break;
                 default:
                     throw new Exception($"Unknown command encountered: {command}");
