@@ -152,18 +152,43 @@ namespace Elevator
 
                             break;
                         case Commands.START_BROWSER:
-                            Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5]);
+                            string wprpFile = traceProfile;
+                            bool useFileMode = true;
+                            string recordingMode = "FileMode";
+
+                            // If a client sends a message with 10 tokens then assume they passed a WPRP file and the trace recording mode.
+                            if (messageTokens.Length == 10)
+                            {
+                                // The seventh token is the WPRP file name.
+                                wprpFile = messageTokens[7];
+
+                                // The ninth token denotes the trace recording mode - either Memory or File.
+                                if (messageTokens[9] == "Memory")
+                                {
+                                    useFileMode = false;
+                                }
+                                else
+                                {
+                                    useFileMode = true;
+                                }
+                            }
+
+                            if (!useFileMode)
+                            {
+                                recordingMode = "MemoryMode";
+                            }
+
+                            Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}  WPRP: {4}  TracingMode: {5}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5], Path.GetFileNameWithoutExtension(wprpFile), recordingMode);
                             Console.WriteLine("{0}: Starting tracing session.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                             // first cancel any currently running trace sessions
                             wpr.CancelWPR();
 
                             // start tracing
-                            wpr.StartWPR();
+                            wpr.StartWPR(wprpFile, useFileMode);
 
                             // create the ETL file name which we will use later
-                            //etlFileName = messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl";
-                            etlFileName = Path.Combine(etlFolderPath, messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl");
+                            etlFileName = Path.Combine(etlFolderPath, messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + Path.GetFileNameWithoutExtension(wprpFile) + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl");
 
                             break;
                         case Commands.END_BROWSER:
@@ -193,7 +218,6 @@ namespace Elevator
                 } // while (!cancelToken.IsCancellationRequested && !isPassEnded)
 
                 server.Disconnect();
-
             } // while (!cancelToken.IsCancellationRequested)
         }
     }

@@ -75,14 +75,36 @@ namespace Elevator
         }
 
         /// <summary>
-        /// Starts a WPR recording session using the specified wprp file.
+        /// Starts a WPR recording session.
         /// </summary>
+        /// <param name="useFileModeRecording">Specifies whether to use Filemode recording mode for tracing. If false, memory mode recording is ussed.</param>
         /// <returns>True if the trace session was started successfully.</returns>
-        public bool StartWPR()
+        public bool StartWPR(bool useFileModeRecording = true)
         {
             bool isSuccess = false;
 
-            string commandLine = "-start " + _wprpFile + " -filemode";
+            isSuccess = this.StartWPR(_wprpFile, useFileModeRecording);
+
+            return isSuccess;
+        }
+
+        /// <summary>
+        /// Starts a WPR recording session using the specified wprp file.
+        /// </summary>
+        /// <param name="wprpFile">The wprp file to use for the WPR recording session.</param>
+        /// <param name="useFileModeRecording">Specifies whether to use Filemode recording mode for tracing. If false, memory mode recording is ussed.</param>
+        /// <returns>True if the trace session was started successfully.</returns>
+        public bool StartWPR(string wprpFile, bool useFileModeRecording = true)
+        {
+            bool isSuccess = false;
+            string recordingMode = " -filemode";
+
+            if (!useFileModeRecording)
+            {
+                recordingMode = "";
+            }
+
+            string commandLine = "-start " + wprpFile + recordingMode;
 
             isSuccess = this.RunWpr(commandLine);
 
