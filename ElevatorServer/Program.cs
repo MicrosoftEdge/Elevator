@@ -29,12 +29,13 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace Elevator
 {
     internal class Program
     {
-        private const string DefaultPowerTraceProfile = "DefaultPowerTraceProfile.wprp";
+        private const string DefaultTraceProfile = "DefaultTraceProfile.wprp";
         private static void Main(string[] args)
         {
             string traceProfile = "";
@@ -45,8 +46,8 @@ namespace Elevator
             }
             else
             {
-                Console.WriteLine("No tracing profile file was specified so setting {0} as the tracing profile...", DefaultPowerTraceProfile);
-                traceProfile = DefaultPowerTraceProfile;
+                Console.WriteLine("No tracing profile file was specified so setting {0} as the tracing profile...", DefaultTraceProfile);
+                traceProfile = DefaultTraceProfile;
             }
 
             // If the trace profile doesn't exist exit the program.
@@ -74,7 +75,6 @@ namespace Elevator
                 while (Console.ReadKey().Key != ConsoleKey.Escape)
                 {
                 }
-
                 server.Shutdown();
                 tokenSource.Cancel();
             }
@@ -101,6 +101,7 @@ namespace Elevator
             AutomateWPR wpr = new AutomateWPR(traceProfile);
             string etlFileName = "";
             string etlFolderPath = "";
+            Regex invalidCharacters = new Regex(@"\W");
 
             Console.WriteLine("{0}: Tracing Controller Server starting....", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
@@ -149,21 +150,48 @@ namespace Elevator
                             {
                                 etlFolderPath = Directory.GetCurrentDirectory();
                             }
-
                             break;
                         case Commands.START_BROWSER:
-                            Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5]);
+                            string wprProfile = "defaultProfile";
+                            bool useFileMode = true;
+                            string recordingMode = "FileMode";
+
+                            // If a client sends a message with 10 tokens then assume they passed a WPR profile name and the trace recording mode.
+                            if (messageTokens.Length == 10)
+                            {
+                                // The seventh token is the WPR profile name.
+                                wprProfile = messageTokens[7];
+
+                                // Check if wprProfile contains any non-alphanumeric characters other than underscores.
+                                if (invalidCharacters.IsMatch(wprProfile))
+                                {
+                                    Console.WriteLine("Invalid WPR Profile!");
+                                    throw new Exception("The WPR Profile name is invalid!");
+                                }
+
+                                // The ninth token denotes the trace recording mode - either Memory or File.
+                                if (messageTokens[9] == "Memory")
+                                {
+                                    useFileMode = false;
+                                    recordingMode = "MemoryMode";
+                                }
+                                else
+                                {
+                                    useFileMode = true;
+                                }
+                            }
+
+                            Console.WriteLine("{0}: -Starting- Iteration: {1}  Browser: {2}  Scenario: {3}  WPR Profile: {4}  TracingMode: {5}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), messageTokens[3], messageTokens[1], messageTokens[5], wprProfile, recordingMode);
                             Console.WriteLine("{0}: Starting tracing session.", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
 
                             // first cancel any currently running trace sessions
                             wpr.CancelWPR();
 
                             // start tracing
-                            wpr.StartWPR();
+                            wpr.StartWPR(wprProfile, useFileMode);
 
                             // create the ETL file name which we will use later
-                            //etlFileName = messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl";
-                            etlFileName = Path.Combine(etlFolderPath, messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl");
+                            etlFileName = Path.Combine(etlFolderPath, messageTokens[1] + "_" + messageTokens[5] + "_" + messageTokens[3] + "_" + wprProfile + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".etl");
 
                             break;
                         case Commands.END_BROWSER:
@@ -193,7 +221,6 @@ namespace Elevator
                 } // while (!cancelToken.IsCancellationRequested && !isPassEnded)
 
                 server.Disconnect();
-
             } // while (!cancelToken.IsCancellationRequested)
         }
     }
