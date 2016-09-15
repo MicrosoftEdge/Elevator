@@ -27,6 +27,8 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
+using System.Xml.Linq;
 
 namespace Elevator
 {
@@ -34,8 +36,6 @@ namespace Elevator
     /// Provides Windows tracing controls using Windows Performance Recorder (WPR).
     /// By default AutomateWPR assumes WPR has been installed on the test machine as part of the Windows Performance Toolkit.
     /// Other WPR.exe can optionally be specified by passing the path to the WPR.exe location during instantiation.
-    ///
-    /// NOTE: TestingPower.exe must be run elevated in order to allow control of WPR.exe. 
     /// </summary>
     internal class AutomateWPR
     {
@@ -82,19 +82,28 @@ namespace Elevator
         public bool StartWPR(bool useFileModeRecording = true)
         {
             bool isSuccess = false;
+            string recordingMode = " -filemode";
+            string commandLine = "";
 
-            isSuccess = this.StartWPR(_wprpFile, useFileModeRecording);
+            if (!useFileModeRecording)
+            {
+                recordingMode = "";
+            }
+
+            commandLine = "-start " + _wprpFile + recordingMode;
+
+            isSuccess = this.RunWpr(commandLine);
 
             return isSuccess;
         }
 
         /// <summary>
-        /// Starts a WPR recording session using the specified wprp file.
+        /// Starts a WPR recording session using the specified WPR profile.
         /// </summary>
-        /// <param name="wprpFile">The wprp file to use for the WPR recording session.</param>
+        /// <param name="wprProfile">The WPR profile name in the WPRP file to use for the WPR recording session.</param>
         /// <param name="useFileModeRecording">Specifies whether to use Filemode recording mode for tracing. If false, memory mode recording is ussed.</param>
         /// <returns>True if the trace session was started successfully.</returns>
-        public bool StartWPR(string wprpFile, bool useFileModeRecording = true)
+        public bool StartWPR(string wprProfile, bool useFileModeRecording = true)
         {
             bool isSuccess = false;
             string recordingMode = " -filemode";
@@ -104,8 +113,13 @@ namespace Elevator
                 recordingMode = "";
             }
 
-            string commandLine = "-start " + wprpFile + recordingMode;
+            // Throw an exception if the WPR profile does not exist in the wprp file.
+            if (!VerifyProfileNameExists(wprProfile, _wprpFile))
+            {
+                throw new Exception("The WPR profile does not exist in the WPRP file!");
+            }
 
+            string commandLine = "-start " + _wprpFile + "!" + wprProfile + recordingMode;
             isSuccess = this.RunWpr(commandLine);
 
             return isSuccess;
@@ -116,7 +130,7 @@ namespace Elevator
         /// </summary>
         /// <param name="etlFileName">The ETL file name to save the recording to.</param>
         /// <returns>True if WPR trace recording was stopped.</returns>
-        public bool StopWPR(string etlFileName = "BrowserPower.etl")
+        public bool StopWPR(string etlFileName = "ElevatorTraceSession.etl")
         {
             bool isSuccess = false;
 
@@ -188,6 +202,34 @@ namespace Elevator
             }
 
             return isSuccess;
+        }
+
+        // Opens the wprp file and attempts to find a profile name that matches exactly the passed in wprProfile.
+        private bool VerifyProfileNameExists(string wprProfile, string wprpFile)
+        {
+            bool profileExists = false;
+
+            try
+            {
+                XDocument wprpDoc = XDocument.Load(wprpFile);
+
+                // Find any and all profiles that have the Name matching the passed in wprProfile.
+                var matchedProfiles = from element in wprpDoc.Descendants("Profile")
+                                      where element.Attribute("Name").Value.Equals(wprProfile)
+                                      select element;
+
+                // If there are any matching Profile names then the profile does exist.
+                if (matchedProfiles.Count() > 0)
+                {
+                    profileExists = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception: " + e.Message);
+            }
+
+            return profileExists;
         }
     }
 }
