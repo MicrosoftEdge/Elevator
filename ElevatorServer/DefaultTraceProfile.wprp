@@ -14,7 +14,7 @@
     
     <SystemCollector Id="SystemCollector_DiskUsageMetrics" Name="NT Kernel Logger">
       <BufferSize Value="1024"/>
-      <Buffers Value="512"/>
+      <Buffers Value="800"/>
     </SystemCollector>
     
     <SystemCollector Id="SystemCollector_EnergyMetrics" Name="NT Kernel Logger">
@@ -45,7 +45,7 @@
 
     <EventCollector Id="EventCollector_DiskUsageMetrics" Name="Disk Usage Event Collector">
       <BufferSize Value="1024"/>
-      <Buffers Value="512"/>
+      <Buffers Value="800"/>
     </EventCollector>
 
     <EventCollector Id="EventCollector_EnergyMetrics" Name="Energy Event Collector">
@@ -247,7 +247,7 @@
       </Collectors>
 	</Profile>
     <Profile Id="cpuUsage.Verbose.Memory" Name="cpuUsage" Description="CPU Usage Profile" Base="cpuUsage.Verbose.File" LoggingMode="Memory" DetailLevel="Verbose" />
-    <Profile Id="diskUsage.Verbose.File" Name="diskUsage" Description="Disk Usage Profile" DetailLevel="Verbose" LoggingMode="File">
+    <Profile Id="diskUsage.Verbose.Memory" Name="diskUsage" Description="Disk Usage Profile" DetailLevel="Verbose" LoggingMode="Memory">
       <Collectors>
         <SystemCollectorId Value="SystemCollector_DiskUsageMetrics">
           <SystemProviderId Value="SystemProvider_DiskUsageMetrics" />
@@ -255,16 +255,15 @@
         <EventCollectorId Value="EventCollector_DiskUsageMetrics">
           <EventProviders>
             <EventProviderId Value="EventProvider_Microsoft-Windows-Kernel-EventTracing" />
-            <EventProviderId Value="EventProvider_Microsoft-Windows-DXGKrnl" />
             <EventProviderId Value="EventProvider_Microsoft-Windows-Win32k"/>
             <EventProviderId Value="EventProvider_Microsoft-Windows-ProcessStateManager" />
             <EventProviderId Value="EventProvider_Microsoft-Windows-Storport" />            
             <EventProviderId Value="EventProvider_PerfTrack" />
+            <EventProviderId Value="EventProvider_WPR_Status" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>
 	</Profile>
-    <Profile Id="diskUsage.Verbose.Memory" Name="diskUsage" Description="Disk Usage Profile" Base="diskUsage.Verbose.File" LoggingMode="Memory" DetailLevel="Verbose" />
     <Profile Id="energy.Verbose.File" Name="energy" Description="Energy Profile" LoggingMode="File" DetailLevel="Verbose">
       <Collectors>
         <EventCollectorId Value="EventCollector_EnergyMetrics">
