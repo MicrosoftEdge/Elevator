@@ -209,6 +209,7 @@
         <Keyword Value="0x2000"/>
       </Keywords>
     </EventProvider>    
+    <EventProvider Id="EventProvider_BrowserEfficiencyTestEventProvider" Name="*BrowserEfficiencyTest.ScenarioRunnerEventLog" />
 
 	<!-- Profiles -->	
     <Profile Id="defaultProfile.Verbose.File" Name="defaultProfile" Description="Default tracing profile" LoggingMode="File" DetailLevel="Verbose">
@@ -225,6 +226,7 @@
             <EventProviderId Value="EventProvider_PerfInfo" />
             <EventProviderId Value="EventProvider_PerfTrack" />
             <EventProviderId Value="EventProvider_TaskSchedulerProvider" />
+            <EventProviderId Value="EventProvider_BrowserEfficiencyTestEventProvider" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>
@@ -242,6 +244,7 @@
             <EventProviderId Value="EventProvider_Microsoft-Windows-Win32k"/>
             <EventProviderId Value="EventProvider_Microsoft-Windows-ProcessStateManager" />
             <EventProviderId Value="EventProvider_PerfTrack" />
+            <EventProviderId Value="EventProvider_BrowserEfficiencyTestEventProvider" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>
@@ -260,6 +263,7 @@
             <EventProviderId Value="EventProvider_Microsoft-Windows-Storport" />            
             <EventProviderId Value="EventProvider_PerfTrack" />
             <EventProviderId Value="EventProvider_WPR_Status" />
+            <EventProviderId Value="EventProvider_BrowserEfficiencyTestEventProvider" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>
@@ -269,6 +273,7 @@
         <EventCollectorId Value="EventCollector_EnergyMetrics">
           <EventProviders>
             <EventProviderId Value="EventProvider_Microsoft-Windows-Energy-Estimation-Engine" />
+            <EventProviderId Value="EventProvider_BrowserEfficiencyTestEventProvider" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>
@@ -298,6 +303,7 @@
             <EventProviderId Value="EventProvider_Microsoft-Windows-WLAN-AutoConfig" />
             <EventProviderId Value="EventProvider_PerfTrack" />
             <EventProviderId Value="EventProvider_WPR_Status" />
+            <EventProviderId Value="EventProvider_BrowserEfficiencyTestEventProvider" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>
@@ -316,6 +322,7 @@
             <EventProviderId Value="EventProvider_Win32HeapRanges" />
             <EventProviderId Value="EventProvider_PerfTrack" />
             <EventProviderId Value="EventProvider_WPR_Status" />
+            <EventProviderId Value="EventProvider_BrowserEfficiencyTestEventProvider" />
           </EventProviders>
         </EventCollectorId>
       </Collectors>
